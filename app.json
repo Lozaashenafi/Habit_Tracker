@@ -2,6 +2,7 @@
   "expo": {
     "name": "my-expo-app",
     "slug": "my-expo-app",
+    "scheme": "daily-tracker", 
     "version": "1.0.0",
 
     "web": {
