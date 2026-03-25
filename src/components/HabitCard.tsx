@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { Dumbbell, User, Droplet, EyeOff, Coffee, Moon, Check } from 'lucide-react-native';
+import { Dumbbell, User, Droplet, EyeOff, Coffee, Moon, Check, BookOpen, Zap } from 'lucide-react-native';
 
 const iconMap: Record<string, any> = {
   dumbbell: Dumbbell,
@@ -9,6 +9,8 @@ const iconMap: Record<string, any> = {
   'eye-off': EyeOff,
   coffee: Coffee,
   moon: Moon,
+  'book-open': BookOpen,
+  zap: Zap,
 };
 
 interface HabitCardProps {
@@ -22,17 +24,19 @@ interface HabitCardProps {
 
 export function HabitCard({ id, title, desc, completed, icon, onToggle }: HabitCardProps) {
   const IconComponent = iconMap[icon] || Dumbbell;
-  const scaleValue = new Animated.Value(1);
+  const scaleValue = React.useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
     Animated.sequence([
       Animated.spring(scaleValue, {
         toValue: 0.95,
         useNativeDriver: true,
+        speed: 50,
       }),
       Animated.spring(scaleValue, {
         toValue: 1,
         useNativeDriver: true,
+        speed: 50,
       }),
     ]).start();
     onToggle();
@@ -40,18 +44,14 @@ export function HabitCard({ id, title, desc, completed, icon, onToggle }: HabitC
 
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
-      <Animated.View 
+      <Animated.View
         style={{ transform: [{ scale: scaleValue }] }}
-        className={`bg-[#14191F] p-4 rounded-2xl mb-3 flex-row items-center border ${
-          completed ? 'border-[#4ADE80]/30' : 'border-[#1C2229]'
-        }`}
+        className={`bg-[#14191F] p-4 rounded-2xl mb-3 flex-row items-center border ${completed ? 'border-[#4ADE80]/30' : 'border-[#1C2229]'}`}
       >
-        <View className={`w-12 h-12 rounded-lg items-center justify-center mr-4 ${
-          completed ? 'bg-[#4ADE80]/20' : 'bg-[#1C2229]'
-        }`}>
+        <View className={`w-12 h-12 rounded-lg items-center justify-center mr-4 ${completed ? 'bg-[#4ADE80]/20' : 'bg-[#1C2229]'}`}>
           <IconComponent color={completed ? '#4ADE80' : '#475569'} size={22} />
         </View>
-        
+
         <View className="flex-1">
           <Text className={`font-bold text-[16px] ${completed ? 'text-[#4ADE80]' : 'text-white'}`}>
             {title}

@@ -16,12 +16,6 @@ export default function TabLayout() {
       <SafeAreaView className="bg-[#0F1419]">
         <View className="px-6 py-4 flex-row justify-between items-center border-b border-slate-800/30">
           <View className="flex-row items-center">
-            <View className="w-9 h-9 rounded-full bg-[#1C2229] mr-3 border border-[#2D3748] overflow-hidden">
-              <Image 
-                source={{ uri: 'https://avatar.iran.liara.run/public/job/designer/male' }} 
-                className="w-full h-full" 
-              />
-            </View>
             <View>
               <Text className="text-[#4ADE80] font-bold text-xl tracking-tight leading-tight">
                 Performance Lab
@@ -86,10 +80,9 @@ export default function TabLayout() {
         {/* Global Floating Plus Button */}
         <TouchableOpacity 
           onPress={() => setModalVisible(true)}
-          className="absolute bottom-24 self-center bg-[#4ADE80] w-16 h-16 rounded-full items-center justify-center shadow-2xl"
+          className="absolute bottom-14 self-center bg-[#4ADE80] w-16 h-16 rounded-full items-center justify-center shadow-2xl"
           style={{ 
             elevation: 10,
-            shadowColor: '#4ADE80',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,

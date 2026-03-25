@@ -32,6 +32,8 @@ interface HabitContextType {
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   resetDay: () => void;
   getDateKey: () => string;
+  getHabitSpecificStats: (id: string) => { rate: number; streak: number; total: number };
+
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -233,6 +235,27 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     return totalOnDate > 0 && completedOnDate === totalOnDate;
   });
 
+// Inside HabitProvider, add this function to the value:
+const getHabitSpecificStats = (habitId: string) => {
+  const historyKeys = Object.keys(history);
+  if (historyKeys.length === 0) return { rate: 0, streak: 0, total: 0 };
+
+  const completions = historyKeys.filter(key => history[key].includes(habitId)).length;
+  const rate = Math.round((completions / historyKeys.length) * 100);
+
+  // Calculate specific habit streak
+  let currentHabitStreak = 0;
+  const sortedDates = historyKeys.sort().reverse();
+  for (const date of sortedDates) {
+    if (history[date].includes(habitId)) {
+      currentHabitStreak++;
+    } else {
+      if (date !== getDateKey()) break; // Only break if it's not today (allow today to be incomplete)
+    }
+  }
+
+  return { rate, streak: currentHabitStreak, total: completions };
+};
   return (
     <HabitContext.Provider value={{
       habits,
@@ -247,6 +270,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
       updateHabit,
       resetDay,
       getDateKey,
+      getHabitSpecificStats, 
     }}>
       {children}
     </HabitContext.Provider>
@@ -260,3 +284,4 @@ export function useHabits() {
   }
   return context;
 }
+export default HabitProvider;

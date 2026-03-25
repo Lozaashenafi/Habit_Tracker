@@ -1,16 +1,65 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, Switch, TouchableOpacity, Image, Alert } from 'react-native';
-import { Zap, Dumbbell, Droplet, Moon, Clock, Palette, Database, Info, ChevronRight, Download, Trash2, Home, BarChart2, Calendar, Settings as SettingsIcon } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, SafeAreaView, Switch, TouchableOpacity, Alert } from 'react-native';
+import { Zap, Dumbbell, Droplet, Moon, Clock, Palette, Database, Info, ChevronRight, Download, Trash2, Bell, BellOff } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useHabitStore } from '../../src/store/habitStore';
+import { registerForPushNotificationsAsync, cancelAllNotifications, scheduleHabitReminder } from '../../src/utils/notifications';
+import * as Notifications from 'expo-notifications';
 
 export default function SettingsScreen() {
-  const { resetDay, stats } = useHabits();
+  const { stats } = useHabits();
+  const store = useHabitStore();
   const [notifications, setNotifications] = useState({
-    workout: true,
-    hydration: true,
-    sleep: true,
+    workout: false,
+    hydration: false,
+    sleep: false,
   });
+  const [pushToken, setPushToken] = useState<string | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState(false);
+
+  useEffect(() => {
+    checkNotificationPermissions();
+  }, []);
+
+  const checkNotificationPermissions = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotificationPermission(status === 'granted');
+    if (status === 'granted') {
+      const token = await registerForPushNotificationsAsync();
+      setPushToken(token || null);
+    }
+  };
+
+  const requestNotificationPermissions = async () => {
+    const token = await registerForPushNotificationsAsync();
+    if (token) {
+      setPushToken(token);
+      setNotificationPermission(true);
+      Alert.alert('Success', 'Notifications enabled!');
+    } else {
+      Alert.alert('Error', 'Failed to enable notifications');
+    }
+  };
+
+  const toggleNotification = async (habitType: string, enabled: boolean) => {
+    setNotifications({ ...notifications, [habitType]: enabled });
+    
+    if (enabled && !notificationPermission) {
+      await requestNotificationPermissions();
+    }
+    
+    // Find and update the habit in store
+    const habitToUpdate = store.habits.find(h => {
+      if (habitType === 'workout') return h.title === 'Workout';
+      if (habitType === 'hydration') return h.title === 'Hydration';
+      if (habitType === 'sleep') return h.title === 'Recovery' || h.title === 'Sleep';
+      return false;
+    });
+    
+    if (habitToUpdate) {
+      await store.updateHabit(habitToUpdate.id, { reminderEnabled: enabled });
+    }
+  };
 
   const handleResetAll = () => {
     Alert.alert(
@@ -18,13 +67,12 @@ export default function SettingsScreen() {
       'This will reset all your habits and progress. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
+        {
+          text: 'Reset',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.clear();
+            await store.resetAllData();
             Alert.alert('Success', 'All data has been reset');
-            // You might want to reload the app or refresh context here
           }
         }
       ]
@@ -33,24 +81,30 @@ export default function SettingsScreen() {
 
   const handleExportData = async () => {
     try {
-      const allData = await AsyncStorage.multiGet([
-        '@habits',
-        '@habit_history',
-        '@streak_data'
-      ]);
-      
       const exportData = {
-        habits: allData[0][1] ? JSON.parse(allData[0][1]) : [],
-        history: allData[1][1] ? JSON.parse(allData[1][1]) : {},
-        streak: allData[2][1] ? JSON.parse(allData[2][1]) : {},
+        habits: store.habits,
+        history: store.history,
+        streak: {
+          current: store.currentStreak,
+          longest: store.longestStreak,
+        },
         exportDate: new Date().toISOString(),
       };
       
-      // In a real app, you'd share this data
       Alert.alert('Export Ready', JSON.stringify(exportData, null, 2));
     } catch (error) {
       Alert.alert('Error', 'Failed to export data');
     }
+  };
+
+  const handleDisableAllNotifications = async () => {
+    await cancelAllNotifications();
+    // Update all habits to disable reminders
+    for (const habit of store.habits) {
+      await store.updateHabit(habit.id, { reminderEnabled: false });
+    }
+    setNotifications({ workout: false, hydration: false, sleep: false });
+    Alert.alert('Notifications', 'All notifications have been disabled');
   };
 
   return (
@@ -82,12 +136,20 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Notifications Section */}
-        <View className="flex-row justify-between items-center mb-6">
+        {/* Notification Status */}
+        <View className="flex-row justify-between items-center mb-4">
           <Text className="text-[#4ADE80] font-bold text-[11px] uppercase tracking-[3px]">Notifications</Text>
-          <View className="bg-[#1C2229] px-2 py-1 rounded">
-            <Text className="text-[#475569] text-[9px] font-bold uppercase">Active Protocol</Text>
-          </View>
+          {notificationPermission ? (
+            <View className="bg-[#4ADE80]/20 px-2 py-1 rounded flex-row items-center">
+              <Bell color="#4ADE80" size={12} />
+              <Text className="text-[#4ADE80] text-[9px] font-bold ml-1">Enabled</Text>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={requestNotificationPermissions} className="bg-[#1C2229] px-2 py-1 rounded flex-row items-center">
+              <BellOff color="#475569" size={12} />
+              <Text className="text-[#475569] text-[9px] font-bold ml-1">Enable</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <NotificationCard 
@@ -96,7 +158,7 @@ export default function SettingsScreen() {
           time="06:30 AM" 
           desc="Daily catalyst to trigger metabolism and mental clarity."
           enabled={notifications.workout}
-          onToggle={() => setNotifications({...notifications, workout: !notifications.workout})}
+          onToggle={(val: any) => toggleNotification('workout', val)}
         />
 
         <NotificationCard 
@@ -105,7 +167,7 @@ export default function SettingsScreen() {
           time="Every 2 Hours" 
           desc="Systematic fluid intake for optimal cellular performance."
           enabled={notifications.hydration}
-          onToggle={() => setNotifications({...notifications, hydration: !notifications.hydration})}
+          onToggle={(val: any) => toggleNotification('hydration', val)}
         />
 
         {/* Night Sleep Special Card */}
@@ -129,7 +191,7 @@ export default function SettingsScreen() {
                 trackColor={{ false: '#1C2229', true: '#4ADE80' }} 
                 thumbColor="white" 
                 value={notifications.sleep}
-                onValueChange={() => setNotifications({...notifications, sleep: !notifications.sleep})}
+                onValueChange={(val) => toggleNotification('sleep', val)}
               />
           </View>
         </View>
@@ -138,7 +200,6 @@ export default function SettingsScreen() {
         <Text className="text-[#4ADE80] font-bold text-[11px] uppercase tracking-[3px] mb-6">General Control</Text>
         
         <View className="bg-[#14191F] rounded-[24px] overflow-hidden border border-[#1C2229] mb-10">
-          <MenuRow icon={Palette} title="Visual Theme" detail="High-contrast dark editorial" hasArrow />
           <MenuRow 
             icon={Database} 
             title="Data Management" 
@@ -158,11 +219,20 @@ export default function SettingsScreen() {
         {/* Danger Zone */}
         <TouchableOpacity 
           onPress={handleResetAll}
-          className="border border-[#F87171]/20 bg-[#F87171]/5 p-5 rounded-2xl flex-row items-center justify-center mb-32"
+          className="border border-[#F87171]/20 bg-[#F87171]/5 p-5 rounded-2xl flex-row items-center justify-center mb-8"
           activeOpacity={0.8}
         >
           <Trash2 color="#F87171" size={16} />
           <Text className="text-[#F87171] font-bold text-[11px] uppercase tracking-widest ml-2">Purge All Analytical Data</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={handleDisableAllNotifications}
+          className="border border-[#475569]/20 bg-[#1C2229] p-5 rounded-2xl flex-row items-center justify-center mb-32"
+          activeOpacity={0.8}
+        >
+          <BellOff color="#94A3B8" size={16} />
+          <Text className="text-[#94A3B8] font-bold text-[11px] uppercase tracking-widest ml-2">Disable All Notifications</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -176,9 +246,9 @@ function NotificationCard({ icon: Icon, title, time, desc, enabled, onToggle }: 
         <View className="bg-[#1C2229] p-3 rounded-lg">
           <Icon color="#4ADE80" size={20} />
         </View>
-        <Switch 
-          trackColor={{ false: '#1C2229', true: '#4ADE80' }} 
-          thumbColor="white" 
+        <Switch
+          trackColor={{ false: '#1C2229', true: '#4ADE80' }}
+          thumbColor="white"
           value={enabled}
           onValueChange={onToggle}
         />
@@ -195,7 +265,7 @@ function NotificationCard({ icon: Icon, title, time, desc, enabled, onToggle }: 
 
 function MenuRow({ icon: Icon, title, detail, hasArrow, hasDownload, onPress, isLast }: any) {
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
       className={`flex-row items-center p-5 ${!isLast ? 'border-b border-[#0B0F14]' : ''}`}
