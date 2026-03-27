@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Habit {
@@ -18,22 +18,21 @@ export interface HabitStats {
   totalHabits: number;
   completedToday: number;
 }
-
 interface HabitContextType {
   habits: Habit[];
   stats: HabitStats;
   progress: number;
   weeklyData: number[];
+  weeklyLabels: string[]; // Added this
   consistencyData: boolean[];
   isLoading: boolean;
-  addHabit: (habit: Omit<Habit, 'id'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'completed'>) => void;
   toggleHabit: (id: string) => void;
   deleteHabit: (id: string) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   resetDay: () => void;
   getDateKey: () => string;
   getHabitSpecificStats: (id: string) => { rate: number; streak: number; total: number };
-
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -42,6 +41,8 @@ const STORAGE_KEYS = {
   HABITS: '@habits',
   HISTORY: '@habit_history',
   STREAK: '@streak_data',
+  LAST_OPENED: '@last_opened_date', // Added this
+
 };
 
 // Mock initial habits
@@ -75,7 +76,17 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
       const storedHabits = await AsyncStorage.getItem(STORAGE_KEYS.HABITS);
       const storedHistory = await AsyncStorage.getItem(STORAGE_KEYS.HISTORY);
       const storedStreak = await AsyncStorage.getItem(STORAGE_KEYS.STREAK);
+      const lastDate = await AsyncStorage.getItem(STORAGE_KEYS.LAST_OPENED);
 
+         
+      const today = getDateKey();
+      let parsedHabits = storedHabits ? JSON.parse(storedHabits) : [];
+ if (lastDate !== today) {
+        // If it's a new day, set all completed statuses to false
+        parsedHabits = parsedHabits.map((h: Habit) => ({ ...h, completed: false }));
+        await AsyncStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(parsedHabits));
+        await AsyncStorage.setItem(STORAGE_KEYS.LAST_OPENED, today);
+      }
       if (storedHabits) {
         setHabits(JSON.parse(storedHabits));
       } else {
@@ -166,21 +177,25 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
       [todayKey]: completedTodayIds
     };
     setHistory(newHistory);
+        await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(newHistory));
     await saveHistory(newHistory);
 
     const completedCount = completedTodayIds.length;
+    if (completedCount === updatedHabits.length && updatedHabits.length > 0) {
+        // Simple streak increment logic
+        const newStr = streak + 1;
+        setStreak(newStr);
+        if(newStr > longestStreak) setLongestStreak(newStr);
+        await AsyncStorage.setItem(STORAGE_KEYS.STREAK, JSON.stringify({current: newStr, longest: Math.max(newStr, longestStreak)}));
+    }
     await updateStreak(completedCount, updatedHabits.length);
   };
 
-  const addHabit = async (habit: Omit<Habit, 'id'>) => {
-    const newHabit: Habit = {
-      ...habit,
-      id: Date.now().toString(),
-      completed: false,
-    };
-    const updatedHabits = [...habits, newHabit];
-    setHabits(updatedHabits);
-    await saveHabits(updatedHabits);
+  const addHabit = async (habit: any) => {
+    const newHabit = { ...habit, id: Date.now().toString(), completed: false };
+    const updated = [newHabit, ...habits];
+    setHabits(updated);
+    await saveHabits(updated);
   };
 
   const deleteHabit = async (id: string) => {
@@ -220,20 +235,33 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
     const dateKey = date.toISOString().split('T')[0];
-    const completedOnDate = history[dateKey]?.length || 0;
+    const completed = history[dateKey]?.length || 0;
     const totalOnDate = habits.length;
-    return totalOnDate > 0 ? Math.round((completedOnDate / totalOnDate) * 100) : 0;
+    return totalOnDate > 0 ? Math.round((completed / totalOnDate) * 100) : 0;
+  });
+  const weeklyLabels = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
   });
 
   // Generate consistency data for last 180 days
-  const consistencyData = Array.from({ length: 180 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (179 - i));
+ const consistencyData = useMemo(() => {
+  const today = new Date();
+  return Array.from({ length: 180 }, (_, i) => {
+    const date = new Date(today);
+    // Go back 179 days from today
+    date.setDate(today.getDate() - (179 - i));
     const dateKey = date.toISOString().split('T')[0];
+    
     const completedOnDate = history[dateKey]?.length || 0;
     const totalOnDate = habits.length;
-    return totalOnDate > 0 && completedOnDate === totalOnDate;
+
+    // Logic: If there were habits and they were all done, TRUE. 
+    // Otherwise, FALSE (which shows as a dark box).
+    return totalOnDate > 0 && completedOnDate >= totalOnDate;
   });
+}, [history, habits]); 
 
 // Inside HabitProvider, add this function to the value:
 const getHabitSpecificStats = (habitId: string) => {
@@ -257,20 +285,21 @@ const getHabitSpecificStats = (habitId: string) => {
   return { rate, streak: currentHabitStreak, total: completions };
 };
   return (
-    <HabitContext.Provider value={{
+      <HabitContext.Provider value={{
       habits,
-      stats,
-      progress,
+      stats: { currentStreak: streak, longestStreak, avgCompletion: 0, totalHabits: habits.length, completedToday: habits.filter(h => h.completed).length },
+      progress: habits.length > 0 ? Math.round((habits.filter(h => h.completed).length / habits.length) * 100) : 0,
       weeklyData,
+      weeklyLabels,
       consistencyData,
       isLoading,
       addHabit,
       toggleHabit,
       deleteHabit,
-      updateHabit,
-      resetDay,
+      updateHabit: () => {},
+      resetDay: () => {},
       getDateKey,
-      getHabitSpecificStats, 
+      getHabitSpecificStats,
     }}>
       {children}
     </HabitContext.Provider>

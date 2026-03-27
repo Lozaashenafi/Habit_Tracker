@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Info } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context'; // New import
 import { HabitCard } from '../../src/components/HabitCard';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { useHabits } from '../context/HabitContext';
 
 export default function TodayScreen() {
-  const { habits, progress, stats, weeklyData, toggleHabit, isLoading } = useHabits();
+  const { habits, progress, stats, weeklyData, toggleHabit,weeklyLabels , isLoading } = useHabits();
   
   const today = new Date();
   const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -24,20 +25,26 @@ export default function TodayScreen() {
     <SafeAreaView className="flex-1 bg-[#0B0F14]">
       <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
         {/* Progress Section */}
-        <View className="mt-8 mb-6">
-          <Text className="text-[#475569] font-bold uppercase tracking-widest text-[11px] mb-2">
-            {dayName}, {monthDay}
-          </Text>
-          <View className="flex-row justify-between items-end">
-            <Text className="text-white text-[44px] font-bold tracking-tighter leading-none">Daily Ritual</Text>
-            <View className="items-end">
-              <Text className="text-[#4ADE80] text-[52px] font-bold leading-none">{progress}%</Text>
-              <Text className="text-[#475569] text-[10px] font-bold uppercase tracking-tighter">Progress</Text>
-            </View>
-          </View>
-          
-          <ProgressBar progress={progress} height={10} />
+       {/* Date & Header */}
+    <View className="mt-8 mb-6">
+      <Text className="text-[#475569] font-bold uppercase tracking-widest text-[11px] mb-2">
+        {dayName}, {monthDay}
+      </Text>
+
+      {/* Added mb-10 here to create space between this text and the bar below */}
+      <View className="flex-row justify-between items-end mb-10"> 
+        <Text className="text-white text-[44px] font-bold tracking-tighter leading-none">
+          Daily Ritual
+        </Text>
+        <View className="items-end">
+          <Text className="text-[#4ADE80] text-[52px] font-bold leading-none">{progress}%</Text>
+          <Text className="text-[#475569] text-[10px] font-bold uppercase tracking-tighter">Progress</Text>
         </View>
+      </View>
+  
+  {/* This is the bar. It will now be further down because of the mb-10 above */}
+  <ProgressBar progress={progress} height={10} />
+</View>
 
         {/* Consistency Streak */}
         <View className="bg-[#14191F] p-5 rounded-[24px] mb-10">
@@ -81,19 +88,19 @@ export default function TodayScreen() {
             <Info color="#475569" size={18} />
           </View>
           
-          <View className="flex-row items-end justify-between h-32 px-1">
-            {weeklyData.map((h, i) => (
-              <View key={i} className="items-center w-[11%]">
-                <View 
-                  className={`w-full rounded-sm ${h > 0 ? 'bg-[#4ADE80]' : 'bg-[#4ADE80]/20'}`} 
-                  style={{ height: `${h}%` }} 
-                />
-                <Text className="text-[#475569] text-[9px] font-bold mt-4">
-                  {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][i]}
-                </Text>
-              </View>
-            ))}
-          </View>
+         <View className="flex-row items-end justify-between h-32 px-1">
+  {weeklyData.map((h, i) => (
+    <View key={i} className="items-center w-[11%]">
+      <View 
+        className={`w-full rounded-sm ${i === 6 ? 'bg-[#4ADE80]' : 'bg-[#4ADE80]/20'}`} 
+        style={{ height: `${h}%` }} 
+      />
+      <Text className={`text-[9px] font-bold mt-4 ${i === 6 ? 'text-[#4ADE80]' : 'text-[#475569]'}`}>
+        {weeklyLabels[i]} {/* This is now dynamic! */}
+      </Text>
+    </View>
+  ))}
+</View>
         </View>
       </ScrollView>
     </SafeAreaView>

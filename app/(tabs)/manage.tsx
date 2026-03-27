@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, ScrollView,  TextInput, TouchableOpacity, Animated } from 'react-native';
 import { Search, BookOpen, Dumbbell, Droplet, UserPlus, Trash2, BarChart3, Calendar, CheckCircle2 } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
 import { AddHabitModal } from '../../src/components/AddHabitModal';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
+import { SafeAreaView } from 'react-native-safe-area-context'; // New import
 
 export default function ManageScreen() {
   const { habits, addHabit, deleteHabit, stats, weeklyData } = useHabits();

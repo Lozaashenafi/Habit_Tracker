@@ -1,25 +1,17 @@
 import { Stack } from 'expo-router';
-import HabitProvider from './context/HabitContext';
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import HabitProvider from './context/HabitContext'; // Ensure this path is correct
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import "./global.css";
 
 export default function RootLayout() {
-  useEffect(() => {
-    console.log('App initialized. Notifications require a development build.');
-  }, []);
-
   return (
-    <HabitProvider>
-      <Stack>
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
-            animation: 'fade'
-          }}
-        />
-      </Stack>
-    </HabitProvider>
+    <SafeAreaProvider>
+      {/* HabitProvider must wrap the Stack so ALL screens can see it */}
+      <HabitProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        </Stack>
+      </HabitProvider>
+    </SafeAreaProvider>
   );
 }

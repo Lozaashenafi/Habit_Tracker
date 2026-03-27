@@ -1,12 +1,37 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // Check if we're in Expo Go
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const isExpoGo = Constants.appOwnership === 'expo';
+
+export async function scheduleDailyHabitReminder(id: string, title: string, hour: number, minute: number) {
+  if (isExpoGo) return; // Prevent crash in Expo Go
+  
+  try {
+    await Notifications.cancelScheduledNotificationAsync(id);
+    await Notifications.scheduleNotificationAsync({
+      identifier: id,
+      content: {
+        title: "Performance Lab ⚡",
+        body: `Time for: ${title}`,
+      },
+      trigger: {
+        type: SchedulableTriggerInputTypes.CALENDAR,
+        hour,
+        minute,
+        repeats: true,
+      },
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
 
 // Configure notification handler (only works in dev builds)
-if (!IS_EXPO_GO) {
+if (!isExpoGo) {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -21,7 +46,7 @@ if (!IS_EXPO_GO) {
 // Request permissions and get push token
 export async function registerForPushNotificationsAsync() {
   // Notifications don't work in Expo Go with SDK 53+
-  if (IS_EXPO_GO) {
+  if (isExpoGo) {
     console.log('Notifications are not supported in Expo Go. Please use a development build.');
     return null;
   }
@@ -88,7 +113,7 @@ export async function scheduleDailyReminder(
   minute: number = 0
 ) {
   // Notifications don't work in Expo Go with SDK 53+
-  if (IS_EXPO_GO) {
+  if (isExpoGo) {
     console.log('Notifications are not supported in Expo Go. Please use a development build.');
     return null;
   }
@@ -135,7 +160,7 @@ export async function scheduleHabitReminder(habit: {
   reminderHour?: number;
   reminderMinute?: number;
 }) {
-  if (!habit.reminderEnabled || IS_EXPO_GO) return;
+  if (!habit.reminderEnabled || isExpoGo) return;
   
   let hour = habit.reminderHour;
   let minute = habit.reminderMinute;
@@ -176,7 +201,7 @@ function parseTimeString(timeStr: string): { hour: number; minute: number } {
 
 // Cancel all scheduled notifications
 export async function cancelAllNotifications() {
-  if (IS_EXPO_GO) return;
+  if (isExpoGo) return;
   
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -188,7 +213,7 @@ export async function cancelAllNotifications() {
 
 // Cancel a specific notification by ID
 export async function cancelNotification(notificationId: string) {
-  if (IS_EXPO_GO) return;
+  if (isExpoGo) return;
   
   try {
     await Notifications.cancelScheduledNotificationAsync(notificationId);
@@ -200,7 +225,7 @@ export async function cancelNotification(notificationId: string) {
 
 // Get all scheduled notifications
 export async function getAllScheduledNotifications() {
-  if (IS_EXPO_GO) return [];
+  if (isExpoGo) return [];
   
   try {
     return await Notifications.getAllScheduledNotificationsAsync();
@@ -212,7 +237,7 @@ export async function getAllScheduledNotifications() {
 
 // Check if notifications are enabled
 export async function areNotificationsEnabled() {
-  if (IS_EXPO_GO) return false;
+  if (isExpoGo) return false;
   
   try {
     const settings = await Notifications.getPermissionsAsync();
@@ -221,4 +246,16 @@ export async function areNotificationsEnabled() {
     console.error('Error checking notification permissions:', error);
     return false;
   }
+}
+
+
+export async function requestPermissions() {
+  // If in Expo Go, we skip native push setup to prevent crashing
+  if (isExpoGo) {
+    console.log("LOG: Push notifications not supported in Expo Go. Skipping.");
+    return false;
+  }
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === 'granted';
 }

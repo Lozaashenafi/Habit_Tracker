@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, SafeAreaView, Switch, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, Switch, TouchableOpacity, Alert } from 'react-native';
 import { Zap, Dumbbell, Droplet, Moon, Clock, Palette, Database, Info, ChevronRight, Download, Trash2, Bell, BellOff } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
 import { useHabitStore } from '../../src/store/habitStore';
 import { registerForPushNotificationsAsync, cancelAllNotifications, scheduleHabitReminder } from '../../src/utils/notifications';
 import * as Notifications from 'expo-notifications';
+import { SafeAreaView } from 'react-native-safe-area-context'; // New import
 
 export default function SettingsScreen() {
   const { stats } = useHabits();

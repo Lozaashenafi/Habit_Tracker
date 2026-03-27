@@ -4,6 +4,7 @@
     "slug": "performance-lab",
     "version": "1.0.0",
     "scheme": "performancelab",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": ["**/*"],
@@ -16,7 +17,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0B0F14"
+        "backgroundColor": "#0B0F14",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.yourcompany.performancelab",
       "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE"]

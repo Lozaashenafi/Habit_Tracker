@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Flame, Trophy, Activity, Info, TrendingUp, RefreshCw, Download, Sparkles, Target, Award } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
+import { SafeAreaView } from 'react-native-safe-area-context'; // New import
 
 // Motivational messages for different scenarios
 const getMotivationalMessage = (streak: number, completionRate: number, totalHabits: number) => {
@@ -153,17 +154,20 @@ export default function ProgressScreen() {
             </View>
           </View>
 
-          <View className="flex-row flex-wrap justify-between">
-            {consistencyData.slice(0, 98).map((completed, i) => (
-              <View 
-                key={i} 
-                className={`w-[6.5%] aspect-square mb-1.5 rounded-sm ${
-                  completed ? 'bg-[#4ADE80]' : 'bg-[#1C2229]'
-                }`}
-                style={{ opacity: completed ? 1 : 0.4 }}
-              />
-            ))}
-          </View>
+         <View className="flex-row flex-wrap justify-between">
+  {consistencyData.slice(-98).map((completed, i) => ( // Use .slice(-98) to show the most recent 3 months
+    <View 
+      key={i} 
+      className={`w-[6.5%] mb-1.5 rounded-sm ${
+        completed ? 'bg-[#4ADE80]' : 'bg-[#1C2229]'
+      }`}
+      style={{ 
+        opacity: completed ? 1 : 0.4, 
+        aspectRatio: 1 // <--- THIS FORCES THE BOX TO SHOW EVEN IF EMPTY
+      }}
+    />
+  ))}
+</View>
           <View className="flex-row justify-between px-1 mt-2">
             {['OCT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR'].map(m => (
               <Text key={m} className="text-[#475569] text-[9px] font-bold">{m}</Text>
